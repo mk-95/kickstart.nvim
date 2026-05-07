@@ -723,6 +723,7 @@ require('lazy').setup({
         clang_format = {
           args = { '--style=file' },
         },
+        cmake = {'cmake_format'},
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
