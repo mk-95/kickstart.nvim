@@ -605,13 +605,13 @@ require('lazy').setup({
       local servers = {
         clangd = {
           cmd = {
-              "clangd",
-              "--background-index",
-              "--clang-tidy",
-              "--completion-style=detailed",
-              "--header-insertion=iwyu",
-            },
-          filetypes = {'c', 'cpp', 'h', 'hpp'},
+            'clangd',
+            '--background-index',
+            '--clang-tidy',
+            '--completion-style=detailed',
+            '--header-insertion=iwyu',
+          },
+          filetypes = { 'c', 'cpp', 'h', 'hpp' },
         },
         -- gopls = {},
         -- pyright = {},
@@ -675,7 +675,7 @@ require('lazy').setup({
         'clang-format',
         'autopep8',
         'autoflake',
-        'zls'
+        'zls',
       })
 
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -720,6 +720,9 @@ require('lazy').setup({
       },
       -- You can also specify external formatters in here.
       formatters_by_ft = {
+        clang_format = {
+          args = { '--style=file' },
+        },
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
