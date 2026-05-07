@@ -613,8 +613,16 @@ require('lazy').setup({
           },
           filetypes = { 'c', 'cpp', 'h', 'hpp' },
         },
+        basedpyright = {
+          analysis = {
+            autoSearchPaths = true,
+            useLibraryCodeForTypes = true,
+            diagnosticMode = 'openFilesOnly',
+            -- "basic" is standard, "recommended" is stricter, "all" is very strict
+            typeCheckingMode = 'basic',
+          },
+        },
         -- gopls = {},
-        -- pyright = {},
         -- rust_analyzer = {},
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -673,6 +681,7 @@ require('lazy').setup({
         'cmakelang',
         'clangd',
         'clang-format',
+        'basedpyright',
         'autopep8',
         'autoflake',
         'zls',
@@ -723,7 +732,7 @@ require('lazy').setup({
         clang_format = {
           args = { '--style=file' },
         },
-        cmake = {'cmake_format'},
+        cmake = { 'cmake_format' },
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
