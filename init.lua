@@ -610,6 +610,9 @@ require('lazy').setup({
       ---@type table<string, vim.lsp.Config>
       local servers = {
         clangd = {
+          init_options = {
+            fallbackFlags = { '-std=c++23' },
+          },
           cmd = {
             'clangd',
             '--background-index',
