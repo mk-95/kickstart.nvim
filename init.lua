@@ -693,6 +693,7 @@ require('lazy').setup({
         'isort',
         'black',
         'zls',
+        'jq',
       })
 
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -742,6 +743,7 @@ require('lazy').setup({
         },
         cmake = { 'cmake_format' },
         python = { 'isort', 'black' },
+        json = { 'jq' },
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         --
