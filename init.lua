@@ -459,6 +459,7 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
+        { '<leader>d', group = '[D]ebug' },
         { '<leader>r', group = '[R]un / build' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
@@ -912,6 +913,8 @@ require('lazy').setup({
         'black',
         'jq',
         'ocamlformat',
+        'codelldb', -- C/C++/Zig debugger adapter (used by nvim-dap)
+        'debugpy', -- Python debugger adapter (used by nvim-dap)
       })
 
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -920,6 +923,131 @@ require('lazy').setup({
         vim.lsp.config(name, server)
         vim.lsp.enable(name)
       end
+    end,
+  },
+
+  { -- Debugging: breakpoints, stepping, variable inspection (C/C++/Zig via codelldb, Python via debugpy)
+    'mfussenegger/nvim-dap',
+    dependencies = {
+      'rcarriga/nvim-dap-ui', -- debugger UI (scopes, stack, breakpoints, console)
+      'nvim-neotest/nvim-nio', -- required by nvim-dap-ui
+      'mason-org/mason.nvim', -- puts codelldb on PATH; the adapters are installed by mason-tool-installer above
+    },
+    keys = {
+      { '<F5>', function() require('dap').continue() end, desc = 'Debug: Start/Continue' },
+      { '<leader>dd', function() require('dap').continue() end, desc = '[D]ebug: Start/Continue' },
+      { '<leader>db', function() require('dap').toggle_breakpoint() end, desc = '[D]ebug: Toggle [B]reakpoint' },
+      { '<leader>dB', function() require('dap').set_breakpoint(vim.fn.input 'Breakpoint condition: ') end, desc = '[D]ebug: Conditional [B]reakpoint' },
+      { '<leader>dn', function() require('dap').step_over() end, desc = '[D]ebug: [N]ext (step over)' },
+      { '<leader>di', function() require('dap').step_into() end, desc = '[D]ebug: Step [I]nto' },
+      { '<leader>do', function() require('dap').step_out() end, desc = '[D]ebug: Step [O]ut' },
+      { '<leader>dc', function() require('dap').run_to_cursor() end, desc = '[D]ebug: Run to [C]ursor' },
+      { '<leader>dr', function() require('dap').run_last() end, desc = '[D]ebug: [R]un last configuration' },
+      { '<leader>dx', function() require('dap').terminate() end, desc = '[D]ebug: Terminate' },
+      { '<leader>du', function() require('dapui').toggle() end, desc = '[D]ebug: Toggle [U]I' },
+      { '<leader>de', function() require('dapui').eval() end, mode = { 'n', 'v' }, desc = '[D]ebug: [E]valuate expression' },
+    },
+    config = function()
+      local dap = require 'dap'
+      local dapui = require 'dapui'
+
+      -- UI; plain unicode icons so it also works without a Nerd Font
+      dapui.setup {
+        icons = { expanded = '▾', collapsed = '▸', current_frame = '*' },
+        controls = {
+          icons = {
+            pause = '⏸',
+            play = '▶',
+            step_into = '⏎',
+            step_over = '⏭',
+            step_out = '⏮',
+            step_back = 'b',
+            run_last = '▶▶',
+            terminate = '⏹',
+            disconnect = '⏏',
+          },
+        },
+      }
+
+      -- Open the UI when a session starts, close it when it ends
+      dap.listeners.after.event_initialized['dapui_config'] = dapui.open
+      dap.listeners.before.event_terminated['dapui_config'] = dapui.close
+      dap.listeners.before.event_exited['dapui_config'] = dapui.close
+
+      vim.fn.sign_define('DapBreakpoint', { text = '●', texthl = 'DiagnosticError' })
+      vim.fn.sign_define('DapBreakpointCondition', { text = '◆', texthl = 'DiagnosticWarn' })
+      vim.fn.sign_define('DapStopped', { text = '▶', texthl = 'DiagnosticOk', linehl = 'CursorLine' })
+
+      -- C / C++ / Zig: codelldb (installed by Mason, found on PATH)
+      dap.adapters.codelldb = {
+        type = 'server',
+        port = '${port}',
+        executable = { command = 'codelldb', args = { '--port', '${port}' } },
+      }
+
+      -- Compile the current C/C++ file with debug info and return the executable path
+      local function build_current_file()
+        local file = vim.fn.expand '%:p'
+        local compiler = vim.bo.filetype == 'cpp' and { 'c++', '-std=c++23' } or { 'cc' }
+        local dir = vim.fn.stdpath 'cache' .. '/run'
+        vim.fn.mkdir(dir, 'p')
+        local exe = dir .. '/' .. vim.fn.expand '%:t:r' .. '-debug'
+        vim.cmd 'silent! wall'
+        local cmd = vim.list_extend(vim.deepcopy(compiler), { '-g', '-O0', file, '-o', exe })
+        local res = vim.system(cmd, { text = true }):wait()
+        if res.code ~= 0 then
+          vim.notify('Build failed:\n' .. (res.stderr or ''), vim.log.levels.ERROR)
+          return dap.ABORT
+        end
+        return exe
+      end
+
+      local function ask_executable() return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file') end
+
+      local launch_executable = {
+        name = 'Launch executable (build it with -g first)',
+        type = 'codelldb',
+        request = 'launch',
+        program = ask_executable,
+        cwd = '${workspaceFolder}',
+        terminal = 'integrated', -- run in a terminal window so the program can read stdin
+      }
+
+      dap.configurations.c = {
+        {
+          name = 'Debug current file (compiled with -g -O0)',
+          type = 'codelldb',
+          request = 'launch',
+          program = build_current_file,
+          cwd = '${fileDirname}',
+          terminal = 'integrated',
+        },
+        launch_executable,
+      }
+      dap.configurations.cpp = dap.configurations.c
+      dap.configurations.zig = { launch_executable }
+
+      -- Python: debugpy (installed by Mason; falls back to `python3 -m debugpy` if it is missing)
+      dap.adapters.python = function(callback)
+        local debugpy = vim.fn.stdpath 'data' .. '/mason/packages/debugpy/venv/bin/python'
+        local command = vim.fn.executable(debugpy) == 1 and debugpy or 'python3'
+        callback { type = 'executable', command = command, args = { '-m', 'debugpy.adapter' } }
+      end
+
+      dap.configurations.python = {
+        {
+          name = 'Debug current file',
+          type = 'python',
+          request = 'launch',
+          program = '${file}',
+          cwd = '${workspaceFolder}',
+          pythonPath = function()
+            local python = vim.fn.exepath 'python3'
+            return python ~= '' and python or 'python3'
+          end,
+          console = 'integratedTerminal',
+        },
+      }
     end,
   },
 
