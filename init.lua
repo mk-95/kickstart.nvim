@@ -941,6 +941,12 @@ require('lazy').setup({
       { '<leader>dn', function() require('dap').step_over() end, desc = '[D]ebug: [N]ext (step over)' },
       { '<leader>di', function() require('dap').step_into() end, desc = '[D]ebug: Step [I]nto' },
       { '<leader>do', function() require('dap').step_out() end, desc = '[D]ebug: Step [O]ut' },
+      -- Alt shortcuts (one chord each): Alt-n next/over, Alt-i into, Alt-o out, Alt-c continue, Alt-b breakpoint
+      { '<M-n>', function() require('dap').step_over() end, desc = 'Debug: Step over (next)' },
+      { '<M-i>', function() require('dap').step_into() end, desc = 'Debug: Step into' },
+      { '<M-o>', function() require('dap').step_out() end, desc = 'Debug: Step out' },
+      { '<M-c>', function() require('dap').continue() end, desc = 'Debug: Start/Continue' },
+      { '<M-b>', function() require('dap').toggle_breakpoint() end, desc = 'Debug: Toggle breakpoint' },
       { '<leader>dc', function() require('dap').run_to_cursor() end, desc = '[D]ebug: Run to [C]ursor' },
       { '<leader>dr', function() require('dap').run_last() end, desc = '[D]ebug: [R]un last configuration' },
       { '<leader>dx', function() require('dap').terminate() end, desc = '[D]ebug: Terminate' },
