@@ -620,17 +620,21 @@ require('lazy').setup({
             '--completion-style=detailed',
             '--header-insertion=iwyu',
           },
-          filetypes = { 'c', 'cpp', 'h', 'hpp' },
         },
         basedpyright = {
-          analysis = {
-            autoSearchPaths = true,
-            useLibraryCodeForTypes = true,
-            diagnosticMode = 'openFilesOnly',
-            -- "basic" is standard, "recommended" is stricter, "all" is very strict
-            typeCheckingMode = 'basic',
+          settings = {
+            basedpyright = {
+              analysis = {
+                autoSearchPaths = true,
+                useLibraryCodeForTypes = true,
+                diagnosticMode = 'openFilesOnly',
+                -- "basic" is standard, "recommended" is stricter, "all" is very strict
+                typeCheckingMode = 'basic',
+              },
+            },
           },
         },
+        zls = {},
         -- gopls = {},
         -- rust_analyzer = {},
         --
@@ -639,8 +643,14 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
-
-        stylua = {}, -- Used to format Lua code
+        ocamllsp = {
+          filetypes = { 'ocaml' },
+          root_markers = {
+            'dune-project',
+            'dune-workspace',
+            '.git',
+          },
+        },
 
         -- Special Lua Config, as recommended by neovim help docs
         lua_ls = {
@@ -687,16 +697,15 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         -- You can add other tools here that you want Mason to install
+        'stylua', -- Used to format Lua code
         'cmakelang',
-        'clangd',
         'clang-format',
-        'basedpyright',
         'autopep8',
         'autoflake',
         'isort',
         'black',
-        'zls',
         'jq',
+        'ocamlformat',
       })
 
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
@@ -741,9 +750,8 @@ require('lazy').setup({
       },
       -- You can also specify external formatters in here.
       formatters_by_ft = {
-        clang_format = {
-          args = { '--style=file' },
-        },
+        c = { 'clang-format' },
+        cpp = { 'clang-format' },
         cmake = { 'cmake_format' },
         python = { 'isort', 'black' },
         json = { 'jq' },
