@@ -464,6 +464,11 @@ require('lazy').setup({
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
         { '<leader>g', group = '[G]it' },
         { 'gr', group = 'LSP Actions', mode = { 'n' } },
+        -- Harpoon: show <leader>1 as "go to file 1-5" and hide 2-5 so they don't clutter the popup
+        { '<leader>2', hidden = true },
+        { '<leader>3', hidden = true },
+        { '<leader>4', hidden = true },
+        { '<leader>5', hidden = true },
       },
     },
   },
@@ -648,6 +653,45 @@ require('lazy').setup({
       { '<leader>gq', '<cmd>DiffviewClose<CR>', desc = '[G]it diff [Q]uit' },
     },
     opts = {},
+  },
+
+  { -- Quick file navigation: pin a few files and jump between them instantly
+    'ThePrimeagen/harpoon',
+    branch = 'harpoon2',
+    dependencies = { 'nvim-lua/plenary.nvim' },
+    config = function()
+      local harpoon = require 'harpoon'
+      harpoon:setup {
+        settings = {
+          save_on_toggle = true, -- remember the list when the menu closes
+          sync_on_ui_close = true,
+        },
+      }
+
+      vim.keymap.set('n', '<leader>a', function() harpoon:list():add() end, { desc = 'Harpoon: [A]dd current file' })
+      vim.keymap.set('n', '<leader>e', function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, { desc = 'Harpoon: [E]dit list (reorder with dd/p)' })
+
+      -- Jump straight to pinned files 1-5
+      for i = 1, 5 do
+        vim.keymap.set('n', '<leader>' .. i, function() harpoon:list():select(i) end, { desc = i == 1 and 'Harpoon: go to file [1-5]' or ('Harpoon: go to file ' .. i) })
+      end
+
+      -- Fuzzy-search the pinned files with Telescope
+      vim.keymap.set('n', '<leader>sm', function()
+        local paths = {}
+        for _, item in ipairs(harpoon:list().items) do
+          table.insert(paths, item.value)
+        end
+        require('telescope.pickers')
+          .new({}, {
+            prompt_title = 'Harpoon',
+            finder = require('telescope.finders').new_table { results = paths },
+            previewer = require('telescope.config').values.file_previewer {},
+            sorter = require('telescope.config').values.generic_sorter {},
+          })
+          :find()
+      end, { desc = '[S]earch harpoon [M]arks' })
+    end,
   },
 
   -- LSP Plugins
