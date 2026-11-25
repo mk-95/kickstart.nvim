@@ -239,6 +239,97 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function() vim.hl.on_yank() end,
 })
 
+-- [[ Build & Run ]]
+--  <leader>rr  run the current file          <leader>rb  build the project (errors -> quickfix)
+--  <leader>rc  run a custom command          <leader>rl  repeat the last run
+--  In the run window, press `q` (normal mode) to close it. Use ]q / [q to walk through build errors.
+local last_run = nil
+
+local function run_in_terminal(cmd, cwd)
+  last_run = { cmd = cmd, cwd = cwd }
+  vim.cmd 'silent! wall'
+  vim.cmd 'botright 15new'
+  vim.fn.jobstart(cmd, { term = true, cwd = cwd })
+  vim.keymap.set('n', 'q', '<cmd>bdelete!<CR>', { buffer = true, desc = 'Close run window' })
+  vim.cmd 'startinsert'
+end
+
+-- Command that compiles (if needed) and runs the file in the current buffer
+local function file_command()
+  local file = vim.fn.expand '%:p'
+  if file == '' then return nil end
+  local dir = vim.fn.stdpath 'cache' .. '/run'
+  vim.fn.mkdir(dir, 'p')
+  local src = vim.fn.shellescape(file)
+  local exe = vim.fn.shellescape(dir .. '/' .. vim.fn.expand '%:t:r')
+  local cmds = {
+    c = string.format('cc -g -Wall -Wextra %s -o %s && %s', src, exe, exe),
+    cpp = string.format('c++ -std=c++23 -g -Wall -Wextra %s -o %s && %s', src, exe, exe),
+    python = 'python3 ' .. src,
+    zig = 'zig run ' .. src,
+    ocaml = 'ocaml ' .. src,
+    lua = 'nvim -l ' .. src,
+    sh = 'bash ' .. src,
+  }
+  return cmds[vim.bo.filetype]
+end
+
+-- Project build systems, checked from the current file upwards (first match wins)
+local build_systems = {
+  { marker = 'CMakeLists.txt', cmd = '(cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build build)' },
+  { marker = 'Makefile', cmd = 'make' },
+  { marker = 'build.zig', cmd = 'zig build' },
+  { marker = 'dune-project', cmd = 'dune build 2>&1' },
+}
+
+vim.keymap.set('n', '<leader>rr', function()
+  local cmd = file_command()
+  if cmd then
+    run_in_terminal(cmd, vim.fn.expand '%:p:h')
+  else
+    vim.notify('No run command for filetype "' .. vim.bo.filetype .. '"', vim.log.levels.WARN)
+  end
+end, { desc = '[R]un current file' })
+
+vim.keymap.set('n', '<leader>rb', function()
+  local dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
+  for _, system in ipairs(build_systems) do
+    local found = vim.fs.find(system.marker, { upward = true, path = dir })[1]
+    if found then
+      vim.cmd 'silent! wall'
+      local prev_cwd = vim.fn.chdir(vim.fs.dirname(found))
+      local prev_makeprg = vim.o.makeprg
+      vim.o.makeprg = system.cmd
+      vim.cmd 'silent make!'
+      vim.o.makeprg = prev_makeprg
+      vim.fn.chdir(prev_cwd)
+      local errors = vim.tbl_filter(function(item) return item.valid == 1 end, vim.fn.getqflist())
+      if #errors > 0 then
+        vim.cmd 'copen'
+      else
+        vim.cmd 'cclose'
+        vim.notify('Build finished with no errors (' .. system.marker .. ')')
+      end
+      return
+    end
+  end
+  vim.notify('No build system found (CMakeLists.txt, Makefile, build.zig, dune-project)', vim.log.levels.WARN)
+end, { desc = '[R]un [B]uild project' })
+
+vim.keymap.set('n', '<leader>rc', function()
+  vim.ui.input({ prompt = 'Run: ', default = last_run and last_run.cmd or '', completion = 'shellcmd' }, function(cmd)
+    if cmd and cmd ~= '' then run_in_terminal(cmd, vim.fn.getcwd()) end
+  end)
+end, { desc = '[R]un [C]ustom command' })
+
+vim.keymap.set('n', '<leader>rl', function()
+  if last_run then
+    run_in_terminal(last_run.cmd, last_run.cwd)
+  else
+    vim.notify('Nothing to repeat yet')
+  end
+end, { desc = '[R]un [L]ast command again' })
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -368,6 +459,7 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
+        { '<leader>r', group = '[R]un / build' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } }, -- Enable gitsigns recommended keymaps first
         { '<leader>g', group = '[G]it' },
