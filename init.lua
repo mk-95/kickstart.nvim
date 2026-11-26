@@ -459,6 +459,7 @@ require('lazy').setup({
       -- Document existing key chains
       spec = {
         { '<leader>s', group = '[S]earch', mode = { 'n', 'v' } },
+        { '<leader>f', group = '[F]iles / [F]ormat' },
         { '<leader>d', group = '[D]ebug' },
         { '<leader>r', group = '[R]un / build' },
         { '<leader>t', group = '[T]oggle' },
@@ -567,6 +568,17 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sc', builtin.commands, { desc = '[S]earch [C]ommands' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
+      -- [[ File navigation ]]
+      vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = '[F]ind [F]iles' })
+      vim.keymap.set('n', '<leader>fg', builtin.git_files, { desc = 'Find [G]it files' })
+      vim.keymap.set('n', '<leader>fr', builtin.oldfiles, { desc = 'Find [R]ecent files' })
+      vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Find open [B]uffers' })
+
+      -- Move between buffers and close the current one.
+      vim.keymap.set('n', '<Tab>', '<cmd>bnext<CR>', { desc = 'Next buffer' })
+      vim.keymap.set('n', '<S-Tab>', '<cmd>bprevious<CR>', { desc = 'Previous buffer' })
+      vim.keymap.set('n', '<leader>bd', '<cmd>bdelete<CR>', { desc = '[B]uffer [D]elete' })
+
       -- Git pickers
       vim.keymap.set('n', '<leader>gs', builtin.git_status, { desc = '[G]it [S]tatus (changed files)' })
       vim.keymap.set('n', '<leader>gc', builtin.git_commits, { desc = '[G]it [C]ommits' })
@@ -633,6 +645,38 @@ require('lazy').setup({
       -- Shortcut for searching your Neovim configuration files
       vim.keymap.set('n', '<leader>sn', function() builtin.find_files { cwd = vim.fn.stdpath 'config' } end, { desc = '[S]earch [N]eovim files' })
     end,
+  },
+
+  {
+    'stevearc/oil.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    lazy = false,
+    opts = {
+      default_file_explorer = true,
+      columns = {},
+      view_options = {
+        show_hidden = true,
+      },
+      keymaps = {
+        ['<C-h>'] = false,
+        ['<C-l>'] = false,
+      },
+    },
+    keys = {
+      { '-', '<cmd>Oil<CR>', desc = 'Open parent directory' },
+      { '<leader>fo', '<cmd>Oil<CR>', desc = '[F]ile manager (project directory)' },
+      {
+        '<leader>f.',
+        function()
+          local dir = vim.fn.expand('%:p:h')
+          if dir == '' or vim.fn.isdirectory(dir) == 0 then
+            dir = vim.fn.getcwd()
+          end
+          require('oil').open(dir)
+        end,
+        desc = 'File manager (current file directory)',
+      },
+    },
   },
 
   { -- Full git interface: :Git status/commit/push, blame, diff splits, conflict resolution
