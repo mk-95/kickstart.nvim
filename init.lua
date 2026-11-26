@@ -1124,6 +1124,16 @@ require('lazy').setup({
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
       },
+      formatters = {
+        -- Run ocamlformat through opam so it always comes from the project's switch
+        -- (install it per switch: `opam install ocamlformat`)
+        ocamlformat = {
+          command = 'opam',
+          args = { 'exec', '--', 'ocamlformat', '--enable-outside-detected-project', '--name', '$FILENAME', '-' },
+          -- `opam exec` picks the switch from the working directory, so run it from the project root
+          cwd = function(_, ctx) return vim.fs.root(ctx.dirname, { '.ocamlformat', 'dune-project' }) end,
+        },
+      },
     },
   },
 
