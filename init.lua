@@ -1137,6 +1137,48 @@ require('lazy').setup({
     },
   },
 
+  { -- Terminal management: toggle bottom / floating / vertical terminals, numbered terminals, send code to a REPL
+    'akinsho/toggleterm.nvim',
+    version = '*',
+    keys = {
+      { [[<C-\>]], desc = 'Toggle terminal (put a count first to pick terminal N)' },
+      { '<leader>tt', '<cmd>ToggleTerm direction=horizontal<CR>', desc = '[T]oggle [T]erminal (bottom)' },
+      { '<leader>tf', '<cmd>ToggleTerm direction=float<CR>', desc = '[T]oggle [F]loating terminal' },
+      { '<leader>tv', '<cmd>ToggleTerm direction=vertical<CR>', desc = '[T]oggle [V]ertical terminal' },
+      { '<leader>ta', '<cmd>ToggleTermToggleAll<CR>', desc = '[T]oggle [A]ll terminals' },
+      { '<leader>ts', '<cmd>ToggleTermSendCurrentLine<CR>', desc = '[T]erminal: [S]end current line' },
+      { '<leader>ts', ':ToggleTermSendVisualLines<CR>', mode = 'x', desc = '[T]erminal: [S]end selected lines' },
+    },
+    opts = {
+      open_mapping = [[<C-\>]], -- works in normal, insert and terminal mode
+      direction = 'horizontal',
+      size = function(term)
+        if term.direction == 'horizontal' then
+          return 15
+        elseif term.direction == 'vertical' then
+          return math.floor(vim.o.columns * 0.4)
+        end
+      end,
+      float_opts = { border = 'curved' },
+      start_in_insert = true,
+    },
+    config = function(_, opts)
+      require('toggleterm').setup(opts)
+
+      -- Same Ctrl-hjkl window navigation as the rest of your config, but from inside these terminals
+      -- (this shadows the shell's own Ctrl-l / Ctrl-k there)
+      vim.api.nvim_create_autocmd('TermOpen', {
+        group = vim.api.nvim_create_augroup('toggleterm-keymaps', { clear = true }),
+        pattern = 'term://*toggleterm#*',
+        callback = function(event)
+          for key, dir in pairs { ['<C-h>'] = 'h', ['<C-j>'] = 'j', ['<C-k>'] = 'k', ['<C-l>'] = 'l' } do
+            vim.keymap.set('t', key, '<cmd>wincmd ' .. dir .. '<CR>', { buffer = event.buf, desc = 'Terminal: move to window ' .. dir })
+          end
+        end,
+      })
+    end,
+  },
+
   { -- Autocompletion
     'saghen/blink.cmp',
     event = 'VimEnter',
