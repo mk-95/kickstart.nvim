@@ -562,6 +562,12 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       vim.keymap.set({ 'n', 'v' }, '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
+     
+      -- [[ Find and replace ]]
+      vim.keymap.set('n', '<leader>sR', ':%s/', { desc = '[S]earch and [R]eplace in file' })
+      vim.keymap.set('n', '<leader>sW', ':%s/\\<<C-r><C-w>\\>/', { desc = '[R]eplace current [W]ord' })
+      vim.keymap.set('x', '<leader>sR', ':s/', { desc = '[R]eplace in selection' })
+
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
