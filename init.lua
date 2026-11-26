@@ -854,6 +854,9 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         ocamllsp = {
+          -- Run the server from opam so it always matches the project's switch (local `_opam` or global),
+          -- instead of the Mason copy. Install it per switch: `opam install ocaml-lsp-server`
+          cmd = vim.fn.executable 'opam' == 1 and { 'opam', 'exec', '--', 'ocamllsp' } or { 'ocamllsp' },
           filetypes = { 'ocaml' },
           root_markers = {
             'dune-project',
@@ -904,7 +907,9 @@ require('lazy').setup({
       --    :Mason
       --
       -- You can press `g?` for help in this menu.
-      local ensure_installed = vim.tbl_keys(servers or {})
+      -- Servers that come from your own environment (opam) and must not be installed by Mason
+      local external_servers = { ocamllsp = true }
+      local ensure_installed = vim.tbl_filter(function(name) return not external_servers[name] end, vim.tbl_keys(servers or {}))
       vim.list_extend(ensure_installed, {
         -- You can add other tools here that you want Mason to install
         'stylua', -- Used to format Lua code
