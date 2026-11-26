@@ -842,6 +842,9 @@ require('lazy').setup({
           },
         },
         zls = {},
+        ruff = { -- Python linting (formatting is done by conform); hover comes from basedpyright
+          on_attach = function(client) client.server_capabilities.hoverProvider = false end,
+        },
         -- gopls = {},
         -- rust_analyzer = {},
         --
@@ -907,12 +910,8 @@ require('lazy').setup({
         'stylua', -- Used to format Lua code
         'cmakelang',
         'clang-format',
-        'autopep8',
-        'autoflake',
-        'isort',
-        'black',
         'jq',
-        'ocamlformat',
+        -- ocamlformat comes from opam (`opam install ocamlformat`), not Mason
         'codelldb', -- C/C++/Zig debugger adapter (used by nvim-dap)
         'debugpy', -- Python debugger adapter (used by nvim-dap)
       })
@@ -1074,12 +1073,29 @@ require('lazy').setup({
     opts = {
       notify_on_error = false,
       format_on_save = function(bufnr)
-        -- You can specify filetypes to autoformat on save here:
-        local enabled_filetypes = {
-          -- lua = true,
-          -- python = true,
+        local filetype = vim.bo[bufnr].filetype
+
+        -- These are only formatted on save when the project has a style file, otherwise
+        -- every save would reformat the file in the formatter's default style
+        local needs_config = {
+          c = { '.clang-format', '_clang-format' },
+          cpp = { '.clang-format', '_clang-format' },
+          ocaml = { '.ocamlformat' },
         }
-        if enabled_filetypes[vim.bo[bufnr].filetype] then
+        local config_files = needs_config[filetype]
+        if config_files then
+          local found = vim.fs.find(config_files, { upward = true, path = vim.api.nvim_buf_get_name(bufnr) })[1]
+          if found then return { timeout_ms = 500 } end
+          return nil
+        end
+
+        -- Other filetypes that are formatted on every save
+        local enabled_filetypes = {
+          python = true,
+          zig = true, -- `zig fmt` has a single standard style, so it is always safe
+          -- lua = true, -- add a stylua.toml first, otherwise stylua reformats with tabs
+        }
+        if enabled_filetypes[filetype] then
           return { timeout_ms = 500 }
         else
           return nil
@@ -1093,8 +1109,10 @@ require('lazy').setup({
         c = { 'clang-format' },
         cpp = { 'clang-format' },
         cmake = { 'cmake_format' },
-        python = { 'isort', 'black' },
+        python = { 'ruff_organize_imports', 'ruff_format' },
         json = { 'jq' },
+        ocaml = { 'ocamlformat' },
+        zig = { 'zigfmt' },
         -- rust = { 'rustfmt' },
         -- Conform can also run multiple formatters sequentially
         --
